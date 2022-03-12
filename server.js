@@ -13,9 +13,9 @@ app.use(express.json());
 // Define Routes
 app.use('/api/users', require('./routes/api/users'))
 app.use('/api/auth', require('./routes/api/auth'))
-// app.use('/api/brand', require('./routes/api/brand'))
-// app.use('/api/personas', require('./routes/api/personas'))
-// app.use('/api/competitors', require('./routes/api/competitors'))
+app.use('/api/brand', require('./routes/api/brand'))
+app.use('/api/personas', require('./routes/api/personas'))
+app.use('/api/competitors', require('./routes/api/competitors'))
 
 
 const PORT = process.env.PORT || 5000;

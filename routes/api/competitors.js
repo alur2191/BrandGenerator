@@ -1,17 +1,17 @@
 const express = require('express');
-const config = require('config');
 const router = express.Router();
 const { check, validationResult } = require('express-validator');
+const auth = require('../../middleware/auth');
+const checkObjectId = require('../../middleware/checkObjectId');
 
 const Competitor = require('../../models/Competitor');
-const User = require('../../models/User');
 
-// @route    GET api/competitor/me
-// @desc     Get current users competitor
+// @route    GET api/competitors/me
+// @desc     Get current users all competitors
 // @access   Private
-router.get('/me', auth, async (req, res) => {
+router.get('/my', auth, async (req, res) => {
     try {
-        const competitors = await Competitor.findMany({
+        const competitors = await Competitor.find({
             user: req.user.id
         })
 
@@ -26,71 +26,133 @@ router.get('/me', auth, async (req, res) => {
     }
 });
 
-// @route    POST api/competitor
-// @desc     Create or update user competitor
+// @route    GET api/competitors
+// @desc     Get competitor by id
+// @access   Private
+router.get('/', auth, async (req, res) => {
+    try {
+        const competitor = await Competitor.findOne({
+            _id: req.body.id
+        })
+
+        if (!competitor) {
+            return res.status(400).json({ msg: 'There is no competitor with this id' });
+        }
+
+        // Check user
+        if (competitor.user.toString() !== req.user.id) {
+            return res.status(401).json({ msg: 'User not authorized' });
+        }
+
+        res.json(competitor);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+    }
+});
+
+
+
+// @route    POST api/competitors
+// @desc     Create a competitor
 // @access   Private
 router.post(
-    '/:id',
+    '/',
     auth,
-    check('name', 'Status is required').notEmpty(),
+    check('name', 'Name is required').notEmpty(),
     async (req, res) => {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
             return res.status(400).json({ errors: errors.array() });
         }
 
-        // destructure the request
-        const {
-            user,
-            name,
-            look,
-            valueProp,
-            tagline,
-            coreProduct,
-            personas,
-            communication,
-        } = req.body;
+        try {
 
-        // build a competitor
+            const newCompetitor = new Competitor({
+                user: req.user.id,
+                name: req.body.name,
+                look: req.body.look,
+                valueProp: req.body.valueProp,
+                tagline: req.body.tagline,
+                coreProduct: req.body.coreProduct,
+                personas: req.body.personas
+            });
+            const competitor = await newCompetitor.save();
+
+            res.json(competitor);
+        } catch (err) {
+            console.error(err.message);
+            res.status(500).send('Server Error');
+        }
+    }
+);
+
+
+// @route    PUT api/competitors/:id
+// @desc     Update a competitor
+// @access   Private
+router.put('/:id', [auth, checkObjectId('id')], async (req, res) => {
+    try {
+        const competitor = await Competitor.findById(req.params.id);
+
+        if (!competitor) {
+            return res.status(404).json({ msg: 'Competitor not found' });
+        }
+
+        // Check user
+        if (competitor.user.toString() !== req.user.id) {
+            return res.status(401).json({ msg: 'User not authorized' });
+        }
+
         const competitorFields = {
-            user,
-            name,
-            look,
-            valueProp,
-            tagline,
-            coreProduct,
-            personas,
-            communication,
-        } = req.body
+            name: req.body.name,
+            look: req.body.look,
+            valueProp: req.body.valueProp,
+            tagline: req.body.tagline,
+            coreProduct: req.body.coreProduct,
+            personas: req.body.personas
+        }
 
         try {
-            // Using upsert option (creates new doc if no match is found):
             let competitor = await Competitor.findOneAndUpdate(
-                { user: req.user.id, id: req.params.id },
-                { $set: competitorFields },
-                { new: true, upsert: true, setDefaultsOnInsert: true }
+                { _id: req.params.id },
+                { competitorFields }
             );
             return res.json(competitor);
         } catch (err) {
             console.error(err.message);
             return res.status(500).send('Server Error');
         }
-    }
-);
-
-// @route    DELETE api/profile
-// @desc     Delete profile, user & posts
-// @access   Private
-router.delete('/:id', auth, async (req, res) => {
-    try {
-        // Remove competitor
-        await Promise(
-            User.findOneAndRemove({ id: req.params.id })
-        );
-
-        res.json({ msg: 'User deleted' });
     } catch (err) {
         console.error(err.message);
+
+        res.status(500).send('Server Error');
+    }
+});
+
+
+// @route    DELETE api/competitors/:id
+// @desc     Delete a competitor
+// @access   Private
+router.delete('/:id', [auth, checkObjectId('id')], async (req, res) => {
+    try {
+        const competitor = await Competitor.findById(req.params.id);
+
+        if (!competitor) {
+            return res.status(404).json({ msg: 'Competitor not found' });
+        }
+
+        // Check user
+        if (competitor.user.toString() !== req.user.id) {
+            return res.status(401).json({ msg: 'User not authorized' });
+        }
+
+        await competitor.remove();
+
+        res.json({ msg: 'Competitor removed' });
+    } catch (err) {
+        console.error(err.message);
+
         res.status(500).send('Server Error');
     }
 });
