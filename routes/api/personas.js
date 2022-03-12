@@ -1,5 +1,4 @@
 const express = require('express');
-const config = require('config');
 const router = express.Router();
 const { check, validationResult } = require('express-validator');
 const auth = require('../../middleware/auth');
@@ -38,6 +37,11 @@ router.get('/', auth, async (req, res) => {
 
         if (!persona) {
             return res.status(400).json({ msg: 'There is no persona with this id' });
+        }
+
+        // Check user
+        if (persona.user.toString() !== req.user.id) {
+            return res.status(401).json({ msg: 'User not authorized' });
         }
 
         res.json(persona);
@@ -114,7 +118,6 @@ router.put('/:id', [auth, checkObjectId('id')], async (req, res) => {
         }
 
         try {
-            // Using upsert option (creates new doc if no match is found):
             let persona = await Persona.findOneAndUpdate(
                 { _id: req.params.id },
                 { personaFields }

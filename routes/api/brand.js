@@ -1,23 +1,27 @@
 const express = require('express');
-const config = require('config');
 const router = express.Router();
 const { check, validationResult } = require('express-validator');
 const auth = require('../../middleware/auth');
+const checkObjectId = require('../../middleware/checkObjectId');
 
-const Persona = require('../../models/Persona');
-const User = require('../../models/User');
+const Brand = require('../../models/Brand');
 
-// @route    GET api/brand/me
-// @desc     Get current users all brand
+// @route    GET api/brands
+// @desc     Get brand by id
 // @access   Private
-router.get('/me', auth, async (req, res) => {
+router.get('/', auth, async (req, res) => {
     try {
-        const brand = await Persona.findOne({
-            user: req.user.id
+        const brand = await Brand.findOne({
+            _id: req.body.id
         })
 
         if (!brand) {
-            return res.status(400).json({ msg: 'There is no brand for this user' });
+            return res.status(400).json({ msg: 'There is no brand with this id' });
+        }
+
+        // Check user
+        if (brand.user.toString() !== req.user.id) {
+            return res.status(401).json({ msg: 'User not authorized' });
         }
 
         res.json(brand);
@@ -27,71 +31,104 @@ router.get('/me', auth, async (req, res) => {
     }
 });
 
-// @route    POST api/brand
-// @desc     Create or update user brand
+
+
+// @route    POST api/brands
+// @desc     Create a brand
 // @access   Private
 router.post(
-    '/:id',
+    '/',
     auth,
-    check('name', 'Status is required').notEmpty(),
+    check('name', 'Name is required').notEmpty(),
     async (req, res) => {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
             return res.status(400).json({ errors: errors.array() });
         }
 
-        // destructure the request
-        const {
-            name,
-            age,
-            gender,
-            relationship,
-            job,
-            location,
-            salary,
-            budget
-        } = req.body;
+        try {
 
-        // build a brand
+            const newBrand = new Brand({
+                user: req.user.id,
+                purpose: req.body.purpose,
+                vision: req.body.vision,
+                mission: req.body.mission,
+                values: req.body.values
+            });
+            const brand = await newBrand.save();
+
+            res.json(brand);
+        } catch (err) {
+            console.error(err.message);
+            res.status(500).send('Server Error');
+        }
+    }
+);
+
+
+// @route    PUT api/brand/:id
+// @desc     Update a brand
+// @access   Private
+router.put('/:id', [auth, checkObjectId('id')], async (req, res) => {
+    try {
+        const brand = await Brand.findById(req.params.id);
+
+        if (!brand) {
+            return res.status(404).json({ msg: 'Brand not found' });
+        }
+
+        // Check user
+        if (brand.user.toString() !== req.user.id) {
+            return res.status(401).json({ msg: 'User not authorized' });
+        }
+
         const brandFields = {
-            name,
-            age,
-            gender,
-            relationship,
-            job,
-            location,
-            salary,
-            budget
-        } = req.body
+            purpose: req.body.purpose,
+            vision: req.body.vision,
+            mission: req.body.mission,
+            values: req.body.values
+        }
 
         try {
-            // Using upsert option (creates new doc if no match is found):
-            let brand = await Persona.findOneAndUpdate(
-                { user: req.user.id, id: req.params.id },
-                { $set: brandFields },
-                { new: true, upsert: true, setDefaultsOnInsert: true }
+            let brand = await Brand.findOneAndUpdate(
+                { _id: req.params.id },
+                { brandFields }
             );
             return res.json(brand);
         } catch (err) {
             console.error(err.message);
             return res.status(500).send('Server Error');
         }
-    }
-);
-
-// @route    DELETE api/brand
-// @desc     Delete brand
-// @access   Private
-router.delete('/:id', auth, async (req, res) => {
-    try {
-        // Remove brand
-        await Promise(
-            User.findOneAndRemove({ id: req.params.id })
-        );
-
-        res.json({ msg: 'User deleted' });
     } catch (err) {
         console.error(err.message);
+
+        res.status(500).send('Server Error');
+    }
+});
+
+
+// @route    DELETE api/brand/:id
+// @desc     Delete a brand
+// @access   Private
+router.delete('/:id', [auth, checkObjectId('id')], async (req, res) => {
+    try {
+        const brand = await Brand.findById(req.params.id);
+
+        if (!brand) {
+            return res.status(404).json({ msg: 'Brand not found' });
+        }
+
+        // Check user
+        if (brand.user.toString() !== req.user.id) {
+            return res.status(401).json({ msg: 'User not authorized' });
+        }
+
+        await brand.remove();
+
+        res.json({ msg: 'Brand removed' });
+    } catch (err) {
+        console.error(err.message);
+
         res.status(500).send('Server Error');
     }
 });
