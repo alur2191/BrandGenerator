@@ -1,6 +1,4 @@
 const mongoose = require('mongoose')
-const AutoIncrement = require('mongoose-sequence')(mongoose);
-
 
 const PersonaSchema = new mongoose.Schema({
     user: {
@@ -33,5 +31,5 @@ const PersonaSchema = new mongoose.Schema({
         type: String,
     }
 })
-PersonaSchema.plugin(AutoIncrement, { inc_field: 'id' });
+
 module.exports = Persona = mongoose.model('persona', PersonaSchema)

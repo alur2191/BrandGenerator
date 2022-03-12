@@ -1,5 +1,4 @@
 const mongoose = require('mongoose')
-const AutoIncrement = require('mongoose-sequence')(mongoose);
 
 const CompetitorSchema = new mongoose.Schema({
     user: {
@@ -28,7 +27,7 @@ const CompetitorSchema = new mongoose.Schema({
     communication: {
         type: String
     }
-
 })
-PersonaSchema.plugin(AutoIncrement, { inc_field: 'id' });
+
+
 module.exports = Competitor = mongoose.model('competitor', CompetitorSchema)

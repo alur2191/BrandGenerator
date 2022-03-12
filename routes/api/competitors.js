@@ -2,6 +2,7 @@ const express = require('express');
 const config = require('config');
 const router = express.Router();
 const { check, validationResult } = require('express-validator');
+const auth = require('../../middleware/auth');
 
 const Competitor = require('../../models/Competitor');
 const User = require('../../models/User');

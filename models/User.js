@@ -1,5 +1,5 @@
 const mongoose = require('mongoose')
-
+const auth = require('../middleware/auth')
 
 const UserSchema = new mongoose.Schema({
     name: {
